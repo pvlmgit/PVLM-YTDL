@@ -21,7 +21,7 @@ def add_security_headers(response):
     response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
     return response
 
-DOWNLOADS_ROOT = os.path.join(os.path.expanduser("~"), "Downloads")
+DOWNLOADS_ROOT = os.environ.get('DOWNLOADS_DIR', os.path.join(os.path.expanduser("~"), "Downloads"))
 VIDEO_DIR = os.path.join(DOWNLOADS_ROOT, "PVLMTube", "Video")
 MUSIC_DIR = os.path.join(DOWNLOADS_ROOT, "PVLMTube", "Music")
 
