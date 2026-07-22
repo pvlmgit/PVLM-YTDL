@@ -1408,6 +1408,20 @@
                             showToast(count > 1 ? `${count} downloaded successfully!` : 'Download complete!', 'success');
                         }
 
+                        // Trigger file downloads
+                        if (data.status === 'done' && data.files && data.files.length > 0) {
+                            data.files.forEach((file, idx) => {
+                                setTimeout(() => {
+                                    const a = document.createElement('a');
+                                    a.href = `/download/${currentDownloadId}/${idx}`;
+                                    a.download = '';
+                                    document.body.appendChild(a);
+                                    a.click();
+                                    document.body.removeChild(a);
+                                }, idx * 1000);
+                            });
+                        }
+
                         // Hide status after 3 seconds
                         setTimeout(() => {
                             status.className = 'status';
