@@ -22,13 +22,15 @@ def add_security_headers(response):
     response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
     return response
 
-# Download paths - use /tmp for server (Railway/Render etc.)
-IS_SERVER = os.environ.get('RAILWAY_STATIC_URL') or os.environ.get('RENDER')
+# Download paths
+IS_SERVER = os.environ.get('RAILWAY_STATIC_URL') or os.environ.get('RENDER') or os.environ.get('PORT')
 
 if IS_SERVER:
-    VIDEO_DIR = "/tmp/PVLMTube/Video"
-    MUSIC_DIR = "/tmp/PVLMTube/Music"
+    # Server: use /tmp (writable on Railway/Render)
+    VIDEO_DIR = "/tmp/pvlmtube/video"
+    MUSIC_DIR = "/tmp/pvlmtube/music"
 else:
+    # Local: use user's Downloads folder
     DOWNLOADS_ROOT = os.path.join(os.path.expanduser("~"), "Downloads")
     VIDEO_DIR = os.path.join(DOWNLOADS_ROOT, "PVLM YouTube Downloader", "Video")
     MUSIC_DIR = os.path.join(DOWNLOADS_ROOT, "PVLM YouTube Downloader", "Music")
@@ -285,9 +287,15 @@ def get_logs():
 
 @app.route("/api/settings", methods=["GET"])
 def get_settings():
+    if IS_SERVER:
+        video_path = "Server: /tmp/pvlmtube/video (auto-delete)"
+        music_path = "Server: /tmp/pvlmtube/music (auto-delete)"
+    else:
+        video_path = VIDEO_DIR
+        music_path = MUSIC_DIR
     return jsonify({
-        "video_dir": VIDEO_DIR,
-        "music_dir": MUSIC_DIR,
+        "video_dir": video_path,
+        "music_dir": music_path,
         "is_server": bool(IS_SERVER)
     })
 
