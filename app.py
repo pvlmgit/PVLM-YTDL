@@ -27,8 +27,8 @@ IS_SERVER = os.environ.get('RAILWAY_STATIC_URL') or os.environ.get('RENDER') or 
 
 if IS_SERVER:
     # Server: use /tmp (writable on Railway/Render)
-    VIDEO_DIR = "/tmp/pvlmtube/video"
-    MUSIC_DIR = "/tmp/pvlmtube/music"
+    VIDEO_DIR = "/tmp/PVLM YouTube Downloader/Video"
+    MUSIC_DIR = "/tmp/PVLM YouTube Downloader/Music"
 else:
     # Local: use user's Downloads folder
     DOWNLOADS_ROOT = os.path.join(os.path.expanduser("~"), "Downloads")
@@ -288,8 +288,8 @@ def get_logs():
 @app.route("/api/settings", methods=["GET"])
 def get_settings():
     if IS_SERVER:
-        video_path = "Server: /tmp/pvlmtube/video (auto-delete)"
-        music_path = "Server: /tmp/pvlmtube/music (auto-delete)"
+        video_path = "Server: /tmp/PVLM YouTube Downloader/Video"
+        music_path = "Server: /tmp/PVLM YouTube Downloader/Music"
     else:
         video_path = VIDEO_DIR
         music_path = MUSIC_DIR
