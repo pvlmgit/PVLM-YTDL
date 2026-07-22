@@ -212,25 +212,51 @@ def download_worker(urls, mode, quality, audio_format, is_playlist, download_id)
                 titles.append(title)
                 completed += 1
 
-                # Find downloaded file
-                base_dir = VIDEO_DIR if mode == "video" else MUSIC_DIR
-                ext = "mp4" if mode == "video" else audio_format
-                file_path = os.path.join(base_dir, f"{title}.{ext}")
-                if os.path.exists(file_path):
-                    downloaded_files.append(file_path)
+                # Find downloaded file using yt-dlp's prepared filename
+                try:
+                    base_dir = VIDEO_DIR if mode == "video" else MUSIC_DIR
+                    ext = "mp4" if mode == "video" else audio_format
+                    # Try multiple possible filenames
+                    possible_files = [
+                        os.path.join(base_dir, f"{title}.{ext}"),
+                        os.path.join(base_dir, f"{title}.{info.get('ext', ext)}"),
+                    ]
+                    # Also check playlist subfolder
+                    if is_playlist:
+                        playlist_title = info.get("playlist_title", "playlist")
+                        possible_files.append(os.path.join(base_dir, playlist_title, f"{title}.{ext}"))
+                        possible_files.append(os.path.join(base_dir, playlist_title, f"{title}.{info.get('ext', ext)}"))
+
+                    for fp in possible_files:
+                        if os.path.exists(fp):
+                            downloaded_files.append(fp)
+                            log(f"Found file: {fp}")
+                            break
+                    else:
+                        # Scan directory for most recent file
+                        import glob
+                        search_pattern = os.path.join(base_dir, f"*{title[:20]}*")
+                        files_found = glob.glob(search_pattern)
+                        if files_found:
+                            downloaded_files.append(max(files_found, key=os.path.getctime))
+                            log(f"Found via scan: {files_found[0]}")
+                        else:
+                            log(f"File not found for: {title}", "error")
+                except Exception as find_err:
+                    log(f"File find error: {find_err}", "error")
 
                 active_downloads[download_id]["current"] = f"[{current_num}/{total}] {title}"
                 active_downloads[download_id]["progress"] = round((completed / total) * 100)
                 active_downloads[download_id]["file_progress"] = 0
                 active_downloads[download_id]["current_index"] = current_num
                 active_downloads[download_id]["files"] = downloaded_files
-                log(f"[{current_num}/{total}] Done: {title}")
+                log(f"[{current_num}/{total}] Done: {title}", "success")
         except Exception as e:
             failed += 1
-            err_msg = str(e)[:80]
+            err_msg = str(e)[:200]
             active_downloads[download_id]["current"] = f"[{current_num}/{total}] Failed: {err_msg}"
             failed_items.append({"url": url, "title": f"Video {current_num}", "error": err_msg})
-            log(f"[{current_num}/{total}] FAILED: {err_msg}")
+            log(f"[{current_num}/{total}] FAILED: {err_msg}", "error")
 
     status_text = f"Done — {completed}/{total} downloaded"
     if failed:
