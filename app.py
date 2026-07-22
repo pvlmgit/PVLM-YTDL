@@ -22,30 +22,36 @@ def add_security_headers(response):
     response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
     return response
 
-# Use temp directory for downloads (Railway has ephemeral filesystem)
-TEMP_DIR = tempfile.mkdtemp()
-VIDEO_DIR = os.path.join(TEMP_DIR, "Video")
-MUSIC_DIR = os.path.join(TEMP_DIR, "Music")
+# Download paths - use /tmp for server (Railway/Render etc.)
+IS_SERVER = os.environ.get('RAILWAY_STATIC_URL') or os.environ.get('RENDER')
+
+if IS_SERVER:
+    VIDEO_DIR = "/tmp/PVLMTube/Video"
+    MUSIC_DIR = "/tmp/PVLMTube/Music"
+else:
+    DOWNLOADS_ROOT = os.path.join(os.path.expanduser("~"), "Downloads")
+    VIDEO_DIR = os.path.join(DOWNLOADS_ROOT, "PVLM YouTube Downloader", "Video")
+    MUSIC_DIR = os.path.join(DOWNLOADS_ROOT, "PVLM YouTube Downloader", "Music")
+
 Path(VIDEO_DIR).mkdir(parents=True, exist_ok=True)
 Path(MUSIC_DIR).mkdir(parents=True, exist_ok=True)
 
-# Mobile/Android path
-MOBILE_VIDEO_DIR = "/storage/emulated/0/Download/PVLM YouTube Downloader/Video"
-MOBILE_MUSIC_DIR = "/storage/emulated/0/Download/PVLM YouTube Downloader/Music"
 HISTORY_FILE = os.path.join(os.path.dirname(__file__), "download_history.json")
-
-Path(VIDEO_DIR).mkdir(parents=True, exist_ok=True)
-Path(MUSIC_DIR).mkdir(parents=True, exist_ok=True)
 
 active_downloads = {}
 history_lock = threading.Lock()
+app_logs = []
 
 MEDIA_EXTS = {".mp4", ".mkv", ".webm", ".avi", ".mov", ".mp3", ".wav", ".flac", ".m4a", ".opus", ".ogg"}
 
 
-def log(msg):
+def log(msg, level="info"):
     ts = time.strftime("%H:%M:%S")
-    print(f"  [{ts}] {msg}", flush=True)
+    entry = f"[{ts}] {msg}"
+    print(f"  {entry}", flush=True)
+    app_logs.append({"time": ts, "message": msg, "level": level})
+    if len(app_logs) > 100:
+        app_logs.pop(0)
 
 
 def normalize_title(title):
@@ -270,6 +276,20 @@ def serve_download(download_id, index):
         return jsonify({"error": "File expired"}), 404
 
     return send_file(file_path, as_attachment=True)
+
+
+@app.route("/api/logs")
+def get_logs():
+    return jsonify(app_logs[-50:])
+
+
+@app.route("/api/settings", methods=["GET"])
+def get_settings():
+    return jsonify({
+        "video_dir": VIDEO_DIR,
+        "music_dir": MUSIC_DIR,
+        "is_server": bool(IS_SERVER)
+    })
 
 
 @app.route("/api/fetch", methods=["POST"])
