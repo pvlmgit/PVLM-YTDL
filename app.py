@@ -128,6 +128,9 @@ def save_history(entry):
             json.dump(history, f, ensure_ascii=False, indent=2)
 
 
+COOKIE_FILE = os.path.join(os.path.dirname(__file__), "cookies.txt")
+
+
 def get_ydl_opts(mode, quality, audio_format, is_playlist=False):
     opts = {
         "progress_hooks": [],
@@ -138,16 +141,23 @@ def get_ydl_opts(mode, quality, audio_format, is_playlist=False):
         "retries": 5,
         "fragment_retries": 5,
         "http_headers": {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
             "Accept-Language": "en-US,en;q=0.9",
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+            "Origin": "https://www.youtube.com",
+            "Referer": "https://www.youtube.com/",
         },
         "extractor_args": {
             "youtube": {
-                "player_client": ["web", "android", "ios"],
+                "player_client": ["web"],
             }
         },
     }
+
+    # Use cookies if available (helps bypass bot detection)
+    if os.path.exists(COOKIE_FILE):
+        opts["cookiefile"] = COOKIE_FILE
+        log("Using cookies file for authentication")
 
     base_dir = VIDEO_DIR if mode == "video" else MUSIC_DIR
 
@@ -333,8 +343,26 @@ def get_settings():
     return jsonify({
         "video_dir": video_path,
         "music_dir": music_path,
-        "is_server": bool(IS_SERVER)
+        "is_server": bool(IS_SERVER),
+        "cookies_installed": os.path.exists(COOKIE_FILE)
     })
+
+
+@app.route("/api/cookies", methods=["POST"])
+def upload_cookies():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file uploaded"}), 400
+
+    file = request.files['file']
+    if file.filename == '':
+        return jsonify({"error": "No file selected"}), 400
+
+    if file and file.filename.endswith('.txt'):
+        file.save(COOKIE_FILE)
+        log("Cookies file uploaded successfully", "success")
+        return jsonify({"ok": True, "message": "Cookies installed"})
+
+    return jsonify({"error": "Please upload a .txt file"}), 400
 
 
 @app.route("/api/fetch", methods=["POST"])
