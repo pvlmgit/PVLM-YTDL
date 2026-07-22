@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PVLM YouTube Downloader</title>
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#ff0033">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <link rel="apple-touch-icon" href="/static/logo.png">
+    <meta http-equiv="X-Content-Type-Options" content="nosniff">
+    <meta http-equiv="X-Frame-Options" content="DENY">
+    <meta name="referrer" content="no-referrer">
+    <style>
+        html { user-select: none; -webkit-user-select: none; }
+    </style>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f0f0f;
+            color: #fff;
+            min-height: 100vh;
+            overflow-y: scroll;
+        }
+
+        body::-webkit-scrollbar { width: 0; }
+        body { scrollbar-width: none; }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 40px 20px 60px;
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            text-align: center;
+            margin-bottom: 4px;
+            letter-spacing: 0.5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 32px;
+        }
+
+        .input-group { margin-bottom: 16px; }
+        label { display: block; font-size: 13px; color: #aaa; margin-bottom: 6px; }
+
+        .url-row {
+            display: flex;
+            gap: 8px;
+            align-items: stretch;
+        }
+
+        .url-row input[type="text"] { flex: 1; }
+
+        .paste-btn {
+            width: auto;
+            padding: 10px 16px !important;
+            background: #333;
+            font-size: 14px !important;
+            flex-shrink: 0;
+        }
+
+        .paste-btn:hover { background: #444; }
+
+        input[type="text"] {
+            width: 100%;
+            padding: 10px 16px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input[type="text"]:focus { border-color: #ff0033; }
+
+        .options {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px 12px;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 14px;
+            outline: none;
+            cursor: pointer;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='%23aaa' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+        }
+
+        select:focus { border-color: #ff0033; }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #ff0033;
+            border: none;
+            border-radius: 8px;
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        button:hover { background: #e6002e; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        button.secondary { background: #333; margin-top: 8px; }
+        button.secondary:hover { background: #444; }
+        button.retry-btn { background: #ff9800; margin-top: 8px; }
+        button.retry-btn:hover { background: #e68900; }
+
+        /* Playlist */
+        .playlist-section { margin-top: 20px; display: none; }
+        .playlist-section.active { display: block; }
+
+        .playlist-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .playlist-title { font-size: 15px; font-weight: 600; color: #eee; }
+        .playlist-count { font-size: 13px; color: #888; }
+
+        .playlist-actions { display: flex; gap: 8px; margin-bottom: 12px; }
+        .playlist-actions button { width: auto; padding: 6px 14px; font-size: 13px; font-weight: 500; border-radius: 6px; }
+
+        .video-list {
+            max-height: 360px;
+            overflow-y: auto;
+            border: 1px solid #222;
+            border-radius: 8px;
+            background: #141414;
+        }
+
+        .video-list::-webkit-scrollbar { width: 6px; }
+        .video-list::-webkit-scrollbar-track { background: transparent; }
+        .video-list::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+        .video-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-bottom: 1px solid #1a1a1a;
+            cursor: pointer;
+            transition: background 0.15s;
+            user-select: none;
+        }
+
+        .video-item:hover { background: #1e1e1e; }
+        .video-item:last-child { border-bottom: none; }
+
+        .video-item input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #ff0033;
+            cursor: pointer;
+            flex-shrink: 0;
+            pointer-events: none;
+        }
+
+        .video-info { flex: 1; min-width: 0; }
+        .video-name { font-size: 14px; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .video-dur { font-size: 12px; color: #888; margin-top: 2px; }
+        .video-num { font-size: 12px; color: #555; width: 24px; text-align: right; flex-shrink: 0; }
+
+        .dl-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            background: #1b3a1b;
+            color: #4caf50;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .video-item.downloaded { opacity: 0.55; }
+
+        /* Single video */
+        .single-info { margin-top: 16px; padding: 14px 16px; background: #1a1a1a; border-radius: 8px; display: none; }
+        .single-info.active { display: block; }
+        .single-title { font-size: 15px; font-weight: 500; color: #eee; }
+        .single-dur { font-size: 13px; color: #888; margin-top: 4px; }
+
+        /* Status / progress */
+        .status {
+            margin-top: 20px;
+            padding: 16px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            display: none;
+        }
+
+        .status.active { display: block; }
+
+        .status-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .status-title { font-size: 14px; color: #ccc; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .cancel-btn {
+            width: auto;
+            padding: 5px 14px;
+            font-size: 12px;
+            font-weight: 500;
+            border-radius: 6px;
+            background: #444;
+            flex-shrink: 0;
+            margin-left: 10px;
+        }
+
+        .cancel-btn:hover { background: #555; }
+
+        .progress-bar { width: 100%; height: 6px; background: #333; border-radius: 3px; overflow: hidden; }
+        .progress-fill { height: 100%; background: #ff0033; border-radius: 3px; transition: width 0.3s; width: 0%; }
+        .status.done .progress-fill { background: #00c853; }
+        .status.cancelled .progress-fill { background: #ff9800; }
+
+        .progress-detail {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 6px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        /* Failed items */
+        .failed-section { margin-top: 12px; }
+        .failed-title { font-size: 13px; color: #ff5252; margin-bottom: 6px; }
+        .failed-item {
+            padding: 8px 12px;
+            background: #1a1212;
+            border: 1px solid #331a1a;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            font-size: 12px;
+            color: #ccc;
+        }
+
+        /* History */
+        .history-section { margin-top: 32px; border-top: 1px solid #222; padding-top: 20px; }
+
+        .history-toggle {
+            background: none;
+            border: none;
+            color: #aaa;
+            font-size: 14px;
+            cursor: pointer;
+            padding: 0;
+            width: auto;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .history-toggle:hover { color: #fff; background: none; }
+        .history-toggle .arrow { transition: transform 0.2s; display: inline-block; }
+        .history-toggle .arrow.open { transform: rotate(90deg); }
+
+        .history-list { margin-top: 12px; display: none; }
+        .history-list.open { display: block; }
+
+        .history-item {
+            padding: 10px 14px;
+            background: #141414;
+            border: 1px solid #1a1a1a;
+            border-radius: 6px;
+            margin-bottom: 6px;
+        }
+
+        .history-item-top { display: flex; justify-content: space-between; align-items: center; }
+        .history-item-title { font-size: 13px; color: #ddd; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+        .history-item-time { font-size: 11px; color: #666; margin-top: 2px; }
+        .history-item-badge {
+            font-size: 11px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+        .badge-done { background: #1b3a1b; color: #4caf50; line-height: 1; }
+        .badge-partial { background: #3a2f1b; color: #ff9800; line-height: 1; }
+
+        .history-item-meta { font-size: 12px; color: #666; margin-top: 4px; display: flex; justify-content: space-between; align-items: center; }
+
+        .history-item-actions {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+
+        .history-delete-btn {
+            background: none;
+            border: none;
+            color: #555;
+            font-size: 11px;
+            cursor: pointer;
+            padding: 0;
+            width: auto;
+            flex-shrink: 0;
+        }
+
+        .history-delete-btn:hover { color: #ff5252; background: none !important; }
+
+        .history-error-link {
+            color: #ff5252;
+            font-size: 12px;
+            cursor: pointer;
+            margin-top: 4px;
+            display: inline-block;
+        }
+
+        .history-error-link:hover { text-decoration: underline; }
+
+        .history-errors {
+            margin-top: 6px;
+            display: none;
+        }
+
+        .history-errors.open { display: block; }
+
+        .history-error-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            padding: 4px 8px;
+            background: #1a1212;
+            border-radius: 4px;
+            margin-bottom: 3px;
+            font-size: 11px;
+        }
+
+        .history-error-item span { flex: 1; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+        .history-retry-btn {
+            background: #ff9800;
+            border: none;
+            color: #fff;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 10px;
+            cursor: pointer;
+            width: auto;
+        }
+
+        .history-retry-btn:hover { background: #e68900; }
+
+        .clear-history-btn {
+            background: none;
+            border: 1px solid #333;
+            color: #888;
+            padding: 4px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            width: auto;
+            margin-left: auto;
+        }
+
+        .clear-history-btn:hover { border-color: #ff5252; color: #ff5252; background: none; }
+
+        /* Footer */
+        .footer {
+            margin-top: 40px;
+            text-align: center;
+            border-top: 1px solid #1a1a1a;
+            padding-top: 20px;
+        }
+
+        .footer-text {
+            font-size: 11px;
+            color: #555;
+            margin-bottom: 8px;
+            margin-top: 24px;
+        }
+
+        .social-links {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .social-links a {
+            font-size: 12px;
+            color: #888;
+            text-decoration: none;
+            transition: color 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .social-links a:hover { color: #ff0033; }
+
+        .social-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .social-icon svg { width: 16px; height: 16px; }
+
+        .logo-wrapper {
+            padding: 0 40px;
+            margin-bottom: 0;
+            line-height: 0;
+        }
+
+        .logo-img {
+            width: 52px;
+            height: auto;
+            object-fit: contain;
+            border-radius: 4px;
+            margin-bottom: 0;
+            padding: 4px;
+        }
+
+        .site-text {
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 0;
+            margin-top: 0;
+            cursor: pointer;
+            text-align: center;
+            display: block;
+        }
+
+        .site-text:hover { color: #ff0033; }
+
+        .failed-expand {
+            color: #ff5252;
+            font-size: 13px;
+            cursor: pointer;
+            margin-top: 8px;
+            display: inline-block;
+        }
+
+        .failed-expand:hover { text-decoration: underline; }
+
+        .failed-list {
+            margin-top: 8px;
+            display: none;
+        }
+
+        .failed-list.open { display: block; }
+
+        .failed-item-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 10px;
+            background: #1a1212;
+            border: 1px solid #331a1a;
+            border-radius: 6px;
+            margin-bottom: 4px;
+            font-size: 12px;
+        }
+
+        .failed-item-title {
+            flex: 1;
+            color: #ccc;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .failed-item-retry {
+            background: #ff9800;
+            border: none;
+            color: #fff;
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            flex-shrink: 0;
+            width: auto;
+        }
+
+        .failed-item-retry:hover { background: #e68900; }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            pointer-events: none;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-box {
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 12px;
+            padding: 24px 28px;
+            max-width: 340px;
+            width: 90%;
+            transform: scale(0.9);
+            transition: transform 0.2s ease;
+            box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+
+        .modal-overlay.show .modal-box { transform: scale(1); }
+
+        .modal-message {
+            font-size: 14px;
+            color: #ddd;
+            line-height: 1.5;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .modal-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+
+        .modal-btn {
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, transform 0.1s;
+            width: auto;
+        }
+
+        .modal-btn:active { transform: scale(0.96); }
+
+        .modal-btn-cancel {
+            background: #333;
+            color: #ccc;
+        }
+
+        .modal-btn-cancel:hover { background: #444; }
+
+        .modal-btn-confirm {
+            background: #ff0033;
+            color: #fff;
+        }
+
+        .modal-btn-confirm:hover { background: #e6002e; }
+
+        .modal-btn-ok {
+            background: #ff0033;
+            color: #fff;
+        }
+
+        .modal-btn-ok:hover { background: #e6002e; }
+
+        /* Checkbox */
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #aaa;
+            cursor: pointer;
+            user-select: none;
+            height: 42px;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #ff0033;
+            cursor: pointer;
+        }
+
+        .playlist-toggle-row {
+            padding: 10px 14px;
+            background: #1a1a1a;
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #333;
+        }
+
+        .playlist-toggle-row .checkbox-label {
+            height: auto;
+            margin: 0;
+        }
+
+        .checkbox-inline {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 10px 12px;
+            margin: 0;
+            background: #1a1a1a;
+            border: 1px solid #333;
+            border-radius: 8px;
+            cursor: pointer;
+            white-space: nowrap;
+            font-size: 12px;
+            color: #aaa;
+            flex-shrink: 0;
+        }
+
+        .checkbox-inline:hover { border-color: #555; }
+
+        .checkbox-inline input[type="checkbox"] {
+            width: 14px;
+            height: 14px;
+            accent-color: #ff0033;
+            cursor: pointer;
+            margin: 0;
+        }
+
+        /* Fetch progress */
+        .fetch-progress {
+            margin-top: 10px;
+        }
+
+        .fetch-progress-bar {
+            width: 100%;
+            height: 3px;
+            background: #333;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+
+        .fetch-progress-fill {
+            height: 100%;
+            width: 0%;
+            background: #ff0033;
+            border-radius: 2px;
+            animation: fetch-pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes fetch-pulse {
+            0% { width: 0%; margin-left: 0; }
+            50% { width: 60%; margin-left: 20%; }
+            100% { width: 0%; margin-left: 100%; }
+        }
+
+        /* Toast */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .toast {
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #fff;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+            transform: translateX(120%);
+            transition: transform 0.3s ease, opacity 0.3s ease;
+            max-width: 320px;
+        }
+
+        .toast.show { transform: translateX(0); }
+        .toast.hide { opacity: 0; }
+
+        .toast-success { background: #1b5e20; border-left: 4px solid #4caf50; }
+        .toast-error { background: #b71c1c; border-left: 4px solid #ff5252; }
+        .toast-info { background: #1a237e; border-left: 4px solid #448aff; }
+        .toast-warn { background: #e65100; border-left: 4px solid #ff9800; }
+
+        /* Mobile Responsive */
+        @media (max-width: 480px) {
+            .container {
+                padding: 20px 12px 40px;
+            }
+
+            h1 { font-size: 18px; margin-top: 20px; }
+            .subtitle { font-size: 11px; margin-bottom: 12px; }
+
+            .url-row {
+                flex-wrap: wrap;
+            }
+
+            .url-row input[type="text"] {
+                flex: 1;
+                height: 44px;
+            }
+
+            .paste-btn {
+                flex: 0 0 auto;
+                height: 44px;
+            }
+
+            .checkbox-inline {
+                width: 100%;
+                order: 3;
+                margin-top: 4px;
+                background: none;
+                border: none;
+                padding: 0;
+            }
+
+            .options {
+                grid-template-columns: 1fr;
+            }
+
+            button {
+                font-size: 14px !important;
+                padding: 10px 16px !important;
+            }
+
+            .video-list {
+                max-height: 280px;
+            }
+
+            .video-item {
+                padding: 8px 10px;
+            }
+
+            .video-name { font-size: 13px; }
+
+            .history-item-title { font-size: 12px; }
+            .history-item-meta { font-size: 11px; flex-wrap: wrap; gap: 6px; }
+
+            .social-links { gap: 8px; }
+            .social-links a { font-size: 11px; }
+
+            .modal-box {
+                padding: 20px;
+                margin: 0 16px;
+            }
+
+            .toast {
+                max-width: 260px;
+                font-size: 12px;
+                padding: 10px 14px;
+            }
+
+            .toast-container {
+                top: 12px;
+                right: 12px;
+            }
+        }
+
+        @media (max-width: 360px) {
+            .container { padding: 16px 10px 32px; }
+            h1 { font-size: 16px; }
+            .checkbox-inline { font-size: 11px; padding: 8px 10px; }
+            .paste-btn { padding: 8px 12px; font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PVLM YouTube Downloader</h1>
+        <div class="subtitle">Created by Prince Vic Lacson Mayordo</div>
+
+        <div class="input-group">
+            <label>URL</label>
+            <div class="url-row">
+                <input type="text" id="url" placeholder="Paste YouTube URL here...">
+                <label class="checkbox-inline">
+                    <input type="checkbox" id="playlist-toggle">
+                    <span>Download Playlist</span>
+                </label>
+                <button class="paste-btn" onclick="pasteUrl()">Paste</button>
+            </div>
+        </div>
+
+        <button id="fetch-btn" onclick="fetchInfo()">Download</button>
+        <div class="fetch-progress" id="fetch-progress" style="display: none;">
+            <div class="fetch-progress-bar">
+                <div class="fetch-progress-fill" id="fetch-progress-fill"></div>
+            </div>
+        </div>
+
+        <!-- Single video -->
+        <div class="single-info" id="single-info">
+            <div class="single-title" id="single-title"></div>
+            <div class="single-dur" id="single-dur"></div>
+        </div>
+
+        <!-- Playlist -->
+        <div class="playlist-section" id="playlist-section">
+            <div class="playlist-header">
+                <div>
+                    <div class="playlist-title" id="playlist-title"></div>
+                    <div class="playlist-count" id="playlist-count"></div>
+                </div>
+            </div>
+            <div class="playlist-actions">
+                <button class="secondary" onclick="selectAll(true)">Select All</button>
+                <button class="secondary" onclick="selectAll(false)">Deselect All</button>
+            </div>
+            <div class="video-list" id="video-list"></div>
+        </div>
+
+        <!-- Options -->
+        <div class="options" id="options" style="margin-top: 20px; display: none;">
+            <div class="input-group">
+                <label>Mode</label>
+                <select id="mode">
+                    <option value="video">Video (MP4)</option>
+                    <option value="audio">Audio Only (MP3)</option>
+                </select>
+            </div>
+            <div class="input-group" id="quality-group">
+                <label>Quality</label>
+                <select id="quality">
+                    <option value="best">Best</option>
+                    <option value="720">720p</option>
+                    <option value="480">480p</option>
+                    <option value="360">360p</option>
+                </select>
+            </div>
+            <div class="input-group" id="format-group" style="display: none;">
+                <label>Format</label>
+                <select id="audio-format">
+                    <option value="mp3">MP3</option>
+                    <option value="wav">WAV</option>
+                    <option value="flac">FLAC</option>
+                    <option value="m4a">M4a</option>
+                </select>
+            </div>
+        </div>
+
+        <button id="download-btn" onclick="startDownload()" style="display: none; margin-top: 12px;">
+            Download Selected
+        </button>
+
+        <!-- Progress status -->
+        <div class="status" id="status">
+            <div class="status-top">
+                <div class="status-title" id="status-title"></div>
+                <button class="cancel-btn" id="cancel-btn" onclick="cancelDownload()" style="display: none;">Cancel</button>
+            </div>
+            <div class="progress-bar">
+                <div class="progress-fill" id="progress-fill"></div>
+            </div>
+            <div class="progress-detail">
+                <span id="progress-file"></span>
+                <span id="progress-text">0%</span>
+            </div>
+            <div id="failed-section" style="display: none;"></div>
+            <button class="retry-btn" id="retry-btn" onclick="retryFailed()" style="display: none;">Retry Failed</button>
+        </div>
+
+        <!-- History -->
+        <div class="history-section">
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <button class="history-toggle" onclick="toggleHistory()">
+                    <span class="arrow" id="history-arrow">&#9654;</span> Download History
+                </button>
+                <button class="clear-history-btn" onclick="clearHistory()">Clear</button>
+            </div>
+            <div class="history-list" id="history-list"></div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="logo-wrapper">
+                <a href="https://pvlm.site" target="_blank" style="text-decoration: none;">
+                    <img class="logo-img" src="/static/logo.png" alt="PVLM Logo">
+                </a>
+            </div>
+            <a href="https://pvlm.site" target="_blank" class="site-text" style="text-decoration: none;">pvlm.site</a>
+            <div class="footer-text">Contacts</div>
+            <div class="social-links">
+                <a href="https://facebook.com/pvlmfb" target="_blank">
+                    <span class="social-icon"><svg viewBox="0 0 24 24" fill="#888"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg></span>
+                    @pvlmfb
+                </a>
+                <a href="https://youtube.com/@pvlmyt" target="_blank">
+                    <span class="social-icon"><svg viewBox="0 0 24 24" fill="#888"><path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/></svg></span>
+                    @pvlmyt
+                </a>
+                <a href="https://tiktok.com/@pvlmtt" target="_blank">
+                    <span class="social-icon"><svg viewBox="0 0 24 24" fill="#888"><path d="M12.525.02c1.31-.02 2.61-.01 3.91-.02.08 1.53.63 3.09 1.75 4.17 1.12 1.11 2.7 1.62 4.24 1.79v4.03c-1.44-.05-2.89-.35-4.2-.97-.57-.26-1.1-.59-1.62-.93-.01 2.92.01 5.84-.02 8.75-.08 1.4-.54 2.79-1.35 3.94-1.31 1.92-3.58 3.17-5.91 3.21-1.43.08-2.86-.31-4.08-1.03-2.02-1.19-3.44-3.37-3.65-5.71-.02-.5-.03-1-.01-1.49.18-1.9 1.12-3.72 2.58-4.96 1.66-1.44 3.98-2.13 6.15-1.72.02 1.48-.04 2.96-.04 4.44-.99-.32-2.15-.23-3.02.37-.63.41-1.11 1.04-1.36 1.75-.21.51-.15 1.07-.14 1.61.24 1.64 1.82 3.02 3.5 2.87 1.12-.01 2.19-.66 2.77-1.61.19-.33.4-.67.41-1.06.1-1.79.06-3.57.07-5.36.01-4.03-.01-8.05.02-12.07z"/></svg></span>
+                    @pvlmtt
+                </a>
+                <a href="https://instagram.com/pvlmig" target="_blank">
+                    <span class="social-icon"><svg viewBox="0 0 24 24" fill="#888"><path d="M12 0C8.74 0 8.333.015 7.053.072 5.775.132 4.905.333 4.14.63c-.789.306-1.459.717-2.126 1.384S.935 3.35.63 4.14C.333 4.905.131 5.775.072 7.053.012 8.333 0 8.74 0 12s.015 3.667.072 4.947c.06 1.277.261 2.148.558 2.913.306.788.717 1.459 1.384 2.126.667.666 1.336 1.079 2.126 1.384.766.296 1.636.499 2.913.558C8.333 23.988 8.74 24 12 24s3.667-.015 4.947-.072c1.277-.06 2.148-.262 2.913-.558.788-.306 1.459-.718 2.126-1.384.666-.667 1.079-1.335 1.384-2.126.296-.765.499-1.636.558-2.913.06-1.28.072-1.687.072-4.947s-.015-3.667-.072-4.947c-.06-1.277-.262-2.149-.558-2.913-.306-.789-.718-1.459-1.384-2.126C21.319 1.347 20.651.935 19.86.63c-.765-.297-1.636-.499-2.913-.558C15.667.012 15.26 0 12 0zm0 2.16c3.203 0 3.585.016 4.85.071 1.17.055 1.805.249 2.227.415.562.217.96.477 1.382.896.419.42.679.819.896 1.381.164.422.36 1.057.413 2.227.057 1.266.07 1.646.07 4.85s-.015 3.585-.074 4.85c-.061 1.17-.256 1.805-.421 2.227-.224.562-.479.96-.899 1.382-.419.419-.824.679-1.38.896-.42.164-1.065.36-2.235.413-1.274.057-1.649.07-4.859.07-3.211 0-3.586-.015-4.859-.074-1.171-.061-1.816-.256-2.236-.421-.569-.224-.96-.479-1.379-.899-.421-.419-.69-.824-.9-1.38-.165-.42-.359-1.065-.42-2.235-.045-1.26-.061-1.649-.061-4.844 0-3.196.016-3.586.061-4.861.061-1.17.255-1.814.42-2.234.21-.57.479-.96.9-1.381.419-.419.81-.689 1.379-.898.42-.166 1.051-.361 2.221-.421 1.275-.045 1.65-.06 4.859-.06l.045.03zm0 3.678a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16c-2.21 0-4-1.79-4-4s1.79-4 4-4 4 1.79 4 4-1.79 4-4 4zm7.846-10.405a1.441 1.441 0 1 1-2.882 0 1.441 1.441 0 0 1 2.882 0z"/></svg></span>
+                    @pvlmig
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal-overlay">
+        <div class="modal-box">
+            <div class="modal-message" id="modal-message"></div>
+            <div class="modal-actions" id="modal-actions"></div>
+        </div>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script>
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js')
+                .then(reg => console.log('Service Worker registered'))
+                .catch(err => console.log('Service Worker error:', err));
+        }
+    </script>
+    <script>
+        let currentData = null;
+        let currentDownloadId = null;
+        let pollInterval = null;
+        let isDownloading = false;
+        let lastFailedUrls = [];
+
+        // Modern Modal
+        function showModal(message, buttons) {
+            return new Promise(resolve => {
+                const overlay = document.getElementById('modal-overlay');
+                const msgEl = document.getElementById('modal-message');
+                const actionsEl = document.getElementById('modal-actions');
+
+                msgEl.textContent = message;
+                actionsEl.innerHTML = '';
+
+                buttons.forEach(btn => {
+                    const el = document.createElement('button');
+                    el.className = 'modal-btn ' + btn.class;
+                    el.textContent = btn.text;
+                    el.onclick = () => {
+                        overlay.classList.remove('show');
+                        setTimeout(() => {
+                            overlay.style.display = 'none';
+                            overlay.style.pointerEvents = 'none';
+                        }, 200);
+                        resolve(btn.value);
+                    };
+                    actionsEl.appendChild(el);
+                });
+
+                overlay.style.display = 'flex';
+                overlay.style.pointerEvents = 'auto';
+                requestAnimationFrame(() => overlay.classList.add('show'));
+            });
+        }
+
+        async function showAlert(message) {
+            await showModal(message, [
+                { text: 'OK', class: 'modal-btn-ok', value: true }
+            ]);
+        }
+
+        async function showConfirm(message) {
+            return await showModal(message, [
+                { text: 'Cancel', class: 'modal-btn-cancel', value: false },
+                { text: 'Confirm', class: 'modal-btn-confirm', value: true }
+            ]);
+        }
+
+        // Format duration from seconds to H:MM:SS or M:SS
+        function formatDuration(dur) {
+            if (!dur || dur === '') return '';
+            const num = parseInt(dur, 10);
+            if (isNaN(num)) return dur;
+            const h = Math.floor(num / 3600);
+            const m = Math.floor((num % 3600) / 60);
+            const s = num % 60;
+            if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+            return `${m}:${String(s).padStart(2, '0')}`;
+        }
+
+        // Toast Notifications
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast toast-${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.add('show');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('hide');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // Warn before refresh/close during download
+        window.addEventListener('beforeunload', (e) => {
+            if (isDownloading) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+
+        const modeSelect = document.getElementById('mode');
+        const qualityGroup = document.getElementById('quality-group');
+        const formatGroup = document.getElementById('format-group');
+        const playlistToggle = document.getElementById('playlist-toggle');
+
+        modeSelect.addEventListener('change', () => {
+            qualityGroup.style.display = modeSelect.value === 'video' ? 'block' : 'none';
+            formatGroup.style.display = modeSelect.value === 'audio' ? 'block' : 'none';
+        });
+
+        playlistToggle.addEventListener('change', async () => {
+            if (!currentData || currentData.type !== 'playlist') return;
+
+            // Ask to re-fetch to switch view
+            const confirmed = await showConfirm('Re-fetch to update the view?');
+            if (!confirmed) {
+                playlistToggle.checked = !playlistToggle.checked;
+                return;
+            }
+
+            // Re-fetch with new toggle state
+            fetchInfo();
+        });
+
+        document.getElementById('url').addEventListener('keydown', (e) => {
+            if (e.key === 'Enter') fetchInfo();
+        });
+
+        async function fetchInfo() {
+            const url = document.getElementById('url').value.trim();
+            if (!url) return showAlert('Please enter a URL');
+
+            const btn = document.getElementById('fetch-btn');
+            const singleInfo = document.getElementById('single-info');
+            const playlistSection = document.getElementById('playlist-section');
+            const options = document.getElementById('options');
+            const downloadBtn = document.getElementById('download-btn');
+
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+            singleInfo.className = 'single-info';
+            playlistSection.className = 'playlist-section';
+            options.style.display = 'none';
+            downloadBtn.style.display = 'none';
+            document.getElementById('fetch-progress').style.display = 'block';
+
+            try {
+                const res = await fetch('/api/fetch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url }),
+                });
+
+                const data = await res.json();
+                if (data.error) {
+                    showToast(data.error, 'error');
+                    btn.disabled = false;
+                    btn.textContent = 'Download';
+                    document.getElementById('fetch-progress').style.display = 'none';
+                    return;
+                }
+
+                currentData = data;
+
+                if (data.type === 'video') {
+                    document.getElementById('single-title').textContent = data.title;
+                    const durEl = document.getElementById('single-dur');
+                    if (data.already_downloaded) {
+                        durEl.textContent = (data.duration ? formatDuration(data.duration) + '  —  ' : '') + 'Already downloaded (' + (data.downloaded_format || '?') + ')';
+                        durEl.style.color = '#4caf50';
+                    } else {
+                        durEl.textContent = formatDuration(data.duration) || '';
+                        durEl.style.color = '#888';
+                    }
+                    singleInfo.className = 'single-info active';
+                    options.style.display = 'grid';
+                    downloadBtn.style.display = 'block';
+                    downloadBtn.textContent = data.already_downloaded ? 'Download Anyway' : 'Download';
+                } else if (data.type === 'playlist') {
+                    // If playlist toggle is unchecked, show first video as single
+                    if (!playlistToggle.checked) {
+                        const firstVideo = data.videos[0];
+                        document.getElementById('single-title').textContent = firstVideo.title;
+                        const durEl = document.getElementById('single-dur');
+                        durEl.textContent = formatDuration(firstVideo.duration) || '';
+                        durEl.style.color = '#888';
+                        singleInfo.className = 'single-info active';
+                        options.style.display = 'grid';
+                        downloadBtn.style.display = 'block';
+                        downloadBtn.textContent = firstVideo.already_downloaded ? 'Download Anyway' : 'Download';
+                    } else {
+                        document.getElementById('playlist-title').textContent = data.title;
+                    const dlCount = data.videos.filter(v => v.already_downloaded).length;
+                    document.getElementById('playlist-count').textContent = data.count + ' videos' + (dlCount > 0 ? ` (${dlCount} already downloaded)` : '');
+                    const list = document.getElementById('video-list');
+                    list.innerHTML = '';
+                    data.videos.forEach((v, i) => {
+                        const item = document.createElement('div');
+                        const isDl = v.already_downloaded;
+                        item.className = 'video-item' + (isDl ? ' downloaded' : '');
+                        item.innerHTML = `
+                            <input type="checkbox" ${isDl ? '' : 'checked'} data-url="${v.url}" data-index="${v.index}">
+                            <span class="video-num">${i + 1}</span>
+                            <div class="video-info">
+                                <div class="video-name" title="${v.title}">${v.title}</div>
+                                ${v.duration ? `<div class="video-dur">${formatDuration(v.duration)}</div>` : ''}
+                            </div>
+                            ${isDl ? `<span class="dl-badge">Downloaded (${v.downloaded_format || '?'}) • ${formatDuration(v.duration)}</span>` : ''}
+                        `;
+                        list.appendChild(item);
+                    });
+                    playlistSection.className = 'playlist-section active';
+                    options.style.display = 'grid';
+                    downloadBtn.style.display = 'block';
+                    updateDownloadBtnText();
+                    }
+                }
+            } catch (err) {
+                showToast('Connection error', 'error');
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'Download';
+            document.getElementById('fetch-progress').style.display = 'none';
+        }
+
+        function selectAll(checked) {
+            document.querySelectorAll('.video-item input[type="checkbox"]').forEach(cb => {
+                cb.checked = checked;
+            });
+            updateDownloadBtnText();
+        }
+
+        function updateDownloadBtnText() {
+            const count = document.querySelectorAll('.video-item input[type="checkbox"]:checked').length;
+            document.getElementById('download-btn').textContent = count > 0
+                ? `Download Selected (${count})`
+                : 'Download Selected';
+        }
+
+        // Unified click handler for rows (normal click + shift+click)
+        let lastClickedIndex = null;
+
+        document.getElementById('video-list').addEventListener('click', (e) => {
+            const item = e.target.closest('.video-item');
+            if (!item) return;
+
+            const items = Array.from(document.querySelectorAll('.video-item'));
+            const currentIndex = items.indexOf(item);
+            const cb = item.querySelector('input[type="checkbox"]');
+            if (!cb) return;
+
+            if (e.shiftKey && lastClickedIndex !== null && lastClickedIndex !== currentIndex) {
+                // Shift+click: toggle clicked item, then set range to match
+                cb.checked = !cb.checked;
+                const start = Math.min(lastClickedIndex, currentIndex);
+                const end = Math.max(lastClickedIndex, currentIndex);
+                const targetState = cb.checked;
+                items.slice(start, end + 1).forEach(el => {
+                    el.querySelector('input[type="checkbox"]').checked = targetState;
+                });
+            } else if (e.target !== cb) {
+                // Normal click on row: toggle checkbox
+                cb.checked = !cb.checked;
+            }
+            // If clicking directly on checkbox, native handles it
+
+            lastClickedIndex = currentIndex;
+            cb.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+
+        document.getElementById('video-list').addEventListener('change', (e) => {
+            if (e.target.type === 'checkbox') updateDownloadBtnText();
+        });
+
+        async function startDownload() {
+            let urls = [];
+
+            if (currentData && currentData.type === 'video') {
+                urls = [currentData.url];
+            } else if (currentData && currentData.type === 'playlist') {
+                if (playlistToggle.checked) {
+                    // Download playlist (selected videos)
+                    const checked = document.querySelectorAll('.video-item input[type="checkbox"]:checked');
+                    urls = Array.from(checked).map(cb => cb.dataset.url);
+                } else {
+                    // Download only the first video
+                    urls = [currentData.videos[0].url];
+                }
+            }
+
+            if (urls.length === 0) return showAlert('Select at least one video');
+            if (!await showConfirm(`Download ${urls.length} item(s)?`)) return;
+
+            isDownloading = true;
+            lastFailedUrls = [];
+            const btn = document.getElementById('download-btn');
+            const status = document.getElementById('status');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const title = document.getElementById('status-title');
+            const fill = document.getElementById('progress-fill');
+            const text = document.getElementById('progress-text');
+            const fileText = document.getElementById('progress-file');
+            const failedSection = document.getElementById('failed-section');
+            const retryBtn = document.getElementById('retry-btn');
+
+            btn.disabled = true;
+            btn.textContent = 'Downloading...';
+            status.className = 'status active';
+            cancelBtn.style.display = 'inline-block';
+            fill.style.width = '0%';
+            text.textContent = '0%';
+            fileText.textContent = '';
+            title.textContent = 'Starting download...';
+            failedSection.style.display = 'none';
+            retryBtn.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/download', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        urls,
+                        mode: modeSelect.value,
+                        quality: document.getElementById('quality').value,
+                        audio_format: document.getElementById('audio-format').value,
+                    }),
+                });
+
+                const data = await res.json();
+                if (data.error) {
+                    title.textContent = data.error;
+                    btn.disabled = false;
+                    btn.textContent = 'Download Selected';
+                    cancelBtn.style.display = 'none';
+                    isDownloading = false;
+                    showToast(data.error, 'error');
+                    return;
+                }
+
+                currentDownloadId = data.id;
+                pollStatus(data.id);
+            } catch (err) {
+                title.textContent = 'Connection error';
+                btn.disabled = false;
+                btn.textContent = 'Download Selected';
+                cancelBtn.style.display = 'none';
+                isDownloading = false;
+                showToast('Connection error', 'error');
+            }
+        }
+
+        async function cancelDownload() {
+            if (!currentDownloadId) return;
+            if (!await showConfirm('Cancel this download?')) return;
+            try {
+                await fetch(`/api/cancel/${currentDownloadId}`, { method: 'POST' });
+            } catch (e) {}
+        }
+
+        async function retryFailed() {
+            if (lastFailedUrls.length === 0) return;
+            if (!await showConfirm(`Retry ${lastFailedUrls.length} failed item(s)?`)) return;
+            doDownload(lastFailedUrls);
+        }
+
+        async function retrySingle(url) {
+            if (!await showConfirm('Retry this download?')) return;
+            doDownload([url]);
+        }
+
+        async function doDownload(urls) {
+            isDownloading = true;
+            lastFailedUrls = [];
+            const btn = document.getElementById('download-btn');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const title = document.getElementById('status-title');
+            const fill = document.getElementById('progress-fill');
+            const text = document.getElementById('progress-text');
+            const fileText = document.getElementById('progress-file');
+            const failedSection = document.getElementById('failed-section');
+            const retryBtn = document.getElementById('retry-btn');
+
+            btn.disabled = true;
+            btn.textContent = 'Downloading...';
+            cancelBtn.style.display = 'inline-block';
+            fill.style.width = '0%';
+            text.textContent = '0%';
+            fileText.textContent = '';
+            title.textContent = 'Starting download...';
+            failedSection.style.display = 'none';
+            retryBtn.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/retry', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        urls,
+                        mode: modeSelect.value,
+                        quality: document.getElementById('quality').value,
+                        audio_format: document.getElementById('audio-format').value,
+                    }),
+                });
+
+                const data = await res.json();
+                if (data.error) {
+                    title.textContent = data.error;
+                    btn.disabled = false;
+                    btn.textContent = 'Download Selected';
+                    cancelBtn.style.display = 'none';
+                    isDownloading = false;
+                    return;
+                }
+
+                currentDownloadId = data.id;
+                pollStatus(data.id);
+            } catch (err) {
+                title.textContent = 'Connection error';
+                btn.disabled = false;
+                isDownloading = false;
+            }
+        }
+
+        function pollStatus(id) {
+            const btn = document.getElementById('download-btn');
+            const cancelBtn = document.getElementById('cancel-btn');
+            const status = document.getElementById('status');
+            const title = document.getElementById('status-title');
+            const fill = document.getElementById('progress-fill');
+            const text = document.getElementById('progress-text');
+            const fileText = document.getElementById('progress-file');
+            const failedSection = document.getElementById('failed-section');
+            const retryBtn = document.getElementById('retry-btn');
+
+            if (pollInterval) clearInterval(pollInterval);
+
+            showToast('Download started', 'info');
+
+            pollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/status/${id}`);
+                    const data = await res.json();
+
+                    fill.style.width = data.progress + '%';
+                    text.textContent = data.progress + '%';
+
+                    const idx = data.current_index || 0;
+                    const total = data.total_count || 0;
+                    const filePct = data.file_progress || 0;
+                    const completed = data.completed_count || 0;
+                    const failed = data.failed_count || 0;
+
+                    if (idx > 0 && total > 0) {
+                        const fileLabel = filePct > 0 && filePct < 100 ? ` (${filePct}%)` : '';
+                        fileText.textContent = `[${completed}/${total}]${fileLabel}`;
+                    } else {
+                        fileText.textContent = '';
+                    }
+
+                    if (data.current) title.textContent = data.current;
+
+                    if (data.status === 'done' || data.status === 'cancelled') {
+                        clearInterval(pollInterval);
+                        pollInterval = null;
+                        isDownloading = false;
+                        title.textContent = '';
+                        status.className = 'status active ' + data.status;
+                        btn.disabled = false;
+                        btn.textContent = 'Download Selected';
+                        cancelBtn.style.display = 'none';
+
+                        // Toast notifications
+                        if (data.status === 'cancelled') {
+                            showToast('Download cancelled', 'info');
+                        } else if (data.failed_count > 0 && data.completed_count > 0) {
+                            showToast(`${data.completed_count} downloaded, ${data.failed_count} failed`, 'error');
+                        } else if (data.failed_count > 0) {
+                            showToast('Download failed', 'error');
+                        } else {
+                            const count = data.completed_count || data.total_count || 1;
+                            showToast(count > 1 ? `${count} downloaded successfully!` : 'Download complete!', 'success');
+                        }
+
+                        // Hide status after 3 seconds
+                        setTimeout(() => {
+                            status.className = 'status';
+                        }, 3000);
+
+                        // Show failed items
+                        if (data.failed_items && data.failed_items.length > 0) {
+                            lastFailedUrls = data.failed_items.map(f => f.url);
+                            const expandId = 'failed-expand-' + Date.now();
+                            const listId = 'failed-list-' + Date.now();
+                            failedSection.innerHTML = `
+                                <div class="failed-expand" id="${expandId}" onclick="document.getElementById('${listId}').classList.toggle('open')">
+                                    ${data.failed_items.length} failed — Click to see details
+                                </div>
+                                <div class="failed-list" id="${listId}">
+                                    ${data.failed_items.map((f, i) => `
+                                        <div class="failed-item-row">
+                                            <span class="failed-item-title" title="${f.error}">${f.title}</span>
+                                            <button class="failed-item-retry" onclick="retrySingle('${f.url.replace(/'/g, "\\'")}')">Retry</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            `;
+                            failedSection.style.display = 'block';
+                            retryBtn.style.display = 'block';
+                        } else {
+                            failedSection.style.display = 'none';
+                            retryBtn.style.display = 'none';
+                        }
+
+                        loadHistory();
+                    }
+                } catch (e) {}
+            }, 1000);
+        }
+
+        function toggleHistory() {
+            const list = document.getElementById('history-list');
+            const arrow = document.getElementById('history-arrow');
+            const isOpen = list.classList.contains('open');
+
+            if (isOpen) {
+                list.classList.remove('open');
+                arrow.classList.remove('open');
+            } else {
+                loadHistory();
+                list.classList.add('open');
+                arrow.classList.add('open');
+            }
+        }
+
+        async function loadHistory() {
+            try {
+                const res = await fetch('/api/history');
+                const data = await res.json();
+                const list = document.getElementById('history-list');
+
+                if (data.length === 0) {
+                    list.innerHTML = '<div style="padding: 12px; color: #666; font-size: 13px;">No downloads yet</div>';
+                    return;
+                }
+
+                list.innerHTML = data.map((item, idx) => {
+                    const modeLabel = item.mode === 'audio' ? 'Audio' : 'Video';
+                    const total = item.total || item.count;
+                    const countStr = `${item.count}/${total}`;
+                    const statusLabel = item.status === 'done' ? 'Done' : 'Partial';
+                    const hasErrors = item.failed_items && item.failed_items.length > 0;
+                    const errId = 'hist-err-' + idx;
+                    return `
+                        <div class="history-item">
+                            <div class="history-item-top">
+                                <div class="history-item-title">${item.title}</div>
+                            </div>
+                            <div class="history-item-meta">
+                                <span>${modeLabel} &middot; ${item.quality} &middot; ${countStr} &middot; ${item.date}</span>
+                                <span class="history-item-actions">
+                                    <span class="history-item-badge ${item.status === 'done' ? 'badge-done' : 'badge-partial'}">${statusLabel}</span>
+                                    <button class="history-delete-btn" onclick="deleteHistoryItem(${idx})">
+                                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle; margin-right: 3px;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                                        Delete
+                                    </button>
+                                </span>
+                            </div>
+                            ${hasErrors ? `
+                                <div class="history-error-link" onclick="document.getElementById('${errId}').classList.toggle('open')">
+                                    ${item.failed} failed — Click to see
+                                </div>
+                                <div class="history-errors" id="${errId}">
+                                    ${item.failed_items.map(f => `
+                                        <div class="history-error-item">
+                                            <span title="${f.error}">${f.title}</span>
+                                            <button class="history-retry-btn" onclick="retrySingle('${f.url.replace(/'/g, "\\'")}')">Retry</button>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {}
+        }
+
+        async function deleteHistoryItem(index) {
+            if (!await showConfirm('Delete this history item?')) return;
+            try {
+                await fetch(`/api/history/${index}`, { method: 'DELETE' });
+                loadHistory();
+            } catch (e) {}
+        }
+
+        async function pasteUrl() {
+            try {
+                const text = await navigator.clipboard.readText();
+                document.getElementById('url').value = text;
+            } catch (e) {
+                showAlert('Cannot access clipboard. Please paste manually.');
+            }
+        }
+
+        async function clearHistory() {
+            if (!await showConfirm('Clear all download history?')) return;
+            try {
+                await fetch('/api/history', { method: 'DELETE' });
+                loadHistory();
+            } catch (e) {}
+        }
+
+        // Security: Disable right-click
+        document.addEventListener('contextmenu', e => e.preventDefault());
+
+        // Security: Disable keyboard shortcuts for dev tools
+        document.addEventListener('keydown', e => {
+            if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'J' || e.key === 'C')) || (e.ctrlKey && e.key === 'U') || (e.ctrlKey && e.key === 'S')) {
+                e.preventDefault();
+                return false;
+            }
+        });
+
+        // Security: Disable drag
+        document.addEventListener('dragstart', e => e.preventDefault());
+
+        // Security: Obfuscate console output
+        console.log = () => {};
+        console.warn = () => {};
+        console.error = () => {};
+        console.table = () => {};
+    </script>
+</body>
+</html>
