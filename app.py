@@ -132,9 +132,12 @@ COOKIE_FILE = os.path.join(os.path.dirname(__file__), "cookies.txt")
 
 
 def get_ydl_opts(mode, quality, audio_format, is_playlist=False):
+    log(f"Cookie file exists: {os.path.exists(COOKIE_FILE)}, path: {COOKIE_FILE}")
+
     opts = {
         "progress_hooks": [],
         "quiet": True,
+        "verbose": True,
         "concurrent_fragment_downloads": 4,
         "extractor_retries": 3,
         "socket_timeout": 60,
