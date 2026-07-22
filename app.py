@@ -75,18 +75,8 @@ def extract_artist_title(title):
 
 
 def scan_existing_files():
-    files = []
-    for root, dirs, filenames in os.walk(os.path.join(DOWNLOADS_ROOT, "PVLMTube")):
-        for fname in filenames:
-            ext = os.path.splitext(fname)[1].lower()
-            if ext in MEDIA_EXTS:
-                stem = os.path.splitext(fname)[0]
-                if ext in (".mp3", ".wav", ".flac", ".m4a", ".opus", ".ogg"):
-                    fmt = "mp3" if ext == ".mp3" else ext[1:].upper()
-                else:
-                    fmt = "mp4" if ext == ".mp4" else ext[1:].upper()
-                files.append((normalize_title(stem), fmt, stem))
-    return files
+    # Server-side: can't check user's local files
+    return []
 
 
 def find_existing_match(title, existing_files):
