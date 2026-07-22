@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""PVLM YouTube Downloader — Local Web UI."""
+"""PVLM YouTube Downloader — Web UI."""
 
 import os
 import re
 import json
+import tempfile
 import threading
 import time
 from difflib import SequenceMatcher
 from pathlib import Path
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, send_file
 
 app = Flask(__name__, static_folder="static", static_url_path="/static")
 
@@ -21,9 +22,12 @@ def add_security_headers(response):
     response.headers['Content-Security-Policy'] = "default-src 'self' 'unsafe-inline' 'unsafe-eval' https:; img-src 'self' data: https:; script-src 'self' 'unsafe-inline' 'unsafe-eval';"
     return response
 
-DOWNLOADS_ROOT = os.environ.get('DOWNLOADS_DIR', os.path.join(os.path.expanduser("~"), "Downloads"))
-VIDEO_DIR = os.path.join(DOWNLOADS_ROOT, "PVLMTube", "Video")
-MUSIC_DIR = os.path.join(DOWNLOADS_ROOT, "PVLMTube", "Music")
+# Use temp directory for downloads (Railway has ephemeral filesystem)
+TEMP_DIR = tempfile.mkdtemp()
+VIDEO_DIR = os.path.join(TEMP_DIR, "Video")
+MUSIC_DIR = os.path.join(TEMP_DIR, "Music")
+Path(VIDEO_DIR).mkdir(parents=True, exist_ok=True)
+Path(MUSIC_DIR).mkdir(parents=True, exist_ok=True)
 
 # Mobile/Android path
 MOBILE_VIDEO_DIR = "/storage/emulated/0/Download/PVLM YouTube Downloader/Video"
@@ -173,6 +177,7 @@ def download_worker(urls, mode, quality, audio_format, is_playlist, download_id)
     failed = 0
     titles = []
     failed_items = []
+    downloaded_files = []
 
     log(f"Starting download: {total} item(s), mode={mode}, quality={quality}")
 
@@ -208,10 +213,19 @@ def download_worker(urls, mode, quality, audio_format, is_playlist, download_id)
                 title = info.get("title", "Unknown")
                 titles.append(title)
                 completed += 1
+
+                # Find downloaded file
+                base_dir = VIDEO_DIR if mode == "video" else MUSIC_DIR
+                ext = "mp4" if mode == "video" else audio_format
+                file_path = os.path.join(base_dir, f"{title}.{ext}")
+                if os.path.exists(file_path):
+                    downloaded_files.append(file_path)
+
                 active_downloads[download_id]["current"] = f"[{current_num}/{total}] {title}"
                 active_downloads[download_id]["progress"] = round((completed / total) * 100)
                 active_downloads[download_id]["file_progress"] = 0
                 active_downloads[download_id]["current_index"] = current_num
+                active_downloads[download_id]["files"] = downloaded_files
                 log(f"[{current_num}/{total}] Done: {title}")
         except Exception as e:
             failed += 1
@@ -249,6 +263,23 @@ def download_worker(urls, mode, quality, audio_format, is_playlist, download_id)
 @app.route("/")
 def index():
     return render_template("index.html")
+
+
+@app.route("/download/<download_id>/<int:index>")
+def serve_download(download_id, index):
+    dl = active_downloads.get(download_id)
+    if not dl or "files" not in dl:
+        return jsonify({"error": "Not found"}), 404
+
+    files = dl["files"]
+    if index < 0 or index >= len(files):
+        return jsonify({"error": "Invalid index"}), 404
+
+    file_path = files[index]
+    if not os.path.exists(file_path):
+        return jsonify({"error": "File expired"}), 404
+
+    return send_file(file_path, as_attachment=True)
 
 
 @app.route("/api/fetch", methods=["POST"])
