@@ -923,11 +923,11 @@
                 <div class="setting-value" id="cookies-status">Loading...</div>
             </div>
             <div class="setting-item">
-                <label>Upload Cookies (YouTube Auth)</label>
-                <p style="font-size: 11px; color: #666; margin-bottom: 8px;">If downloads fail with "bot" error, upload cookies.txt from your browser</p>
-                <input type="file" id="cookies-file" accept=".txt" style="display: none;" onchange="uploadCookies()">
-                <button class="secondary" onclick="document.getElementById('cookies-file').click()" style="width: 100%;">Upload cookies.txt</button>
-                <p style="font-size: 10px; color: #555; margin-top: 6px;">Use "Get cookies.txt" browser extension to export</p>
+                <label>Cookies (YouTube Auth)</label>
+                <p style="font-size: 11px; color: #666; margin-bottom: 8px;">If downloads fail with "bot" error, paste cookies from your browser</p>
+                <textarea id="cookies-text" style="width: 100%; height: 100px; background: #222; border: 1px solid #333; border-radius: 6px; color: #ddd; padding: 8px; font-size: 11px; font-family: monospace; resize: vertical;" placeholder="Paste cookies.txt content here..."></textarea>
+                <button class="secondary" onclick="saveCookies()" style="width: 100%; margin-top: 8px;">Save Cookies</button>
+                <p style="font-size: 10px; color: #555; margin-top: 6px;">1. Install "Get cookies.txt" extension<br>2. Go to youtube.com (logged in)<br>3. Export cookies<br>4. Paste content above</p>
             </div>
         </div>
     </div>
@@ -1147,10 +1147,39 @@
                 const data = await res.json();
                 document.getElementById('download-path').textContent = `Video: ${data.video_dir}\nMusic: ${data.music_dir}`;
                 document.getElementById('server-mode').textContent = data.is_server ? 'Web Server (files auto-delete)' : 'Local Mode (files saved locally)';
-                document.getElementById('cookies-status').textContent = data.cookies_installed ? 'Cookies installed ✓' : 'Not installed (uploads may fail)';
+                document.getElementById('cookies-status').textContent = data.cookies_installed ? 'Cookies installed ✓' : 'Not installed (downloads may fail)';
                 document.getElementById('cookies-status').style.color = data.cookies_installed ? '#4caf50' : '#ff9800';
             } catch (e) {
                 document.getElementById('download-path').textContent = 'Error loading settings';
+            }
+        }
+
+        async function saveCookies() {
+            const textarea = document.getElementById('cookies-text');
+            const cookies = textarea.value.trim();
+
+            if (!cookies) {
+                showToast('Please paste cookies first', 'error');
+                return;
+            }
+
+            try {
+                showToast('Saving cookies...', 'info');
+                const res = await fetch('/api/cookies', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ cookies })
+                });
+                const data = await res.json();
+                if (data.ok) {
+                    showToast('Cookies saved!', 'success');
+                    textarea.value = '';
+                    loadSettings();
+                } else {
+                    showToast(data.error || 'Save failed', 'error');
+                }
+            } catch (e) {
+                showToast('Save failed', 'error');
             }
         }
 

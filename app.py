@@ -43,6 +43,7 @@ HISTORY_FILE = os.path.join(os.path.dirname(__file__), "download_history.json")
 active_downloads = {}
 history_lock = threading.Lock()
 app_logs = []
+cookies_content = None  # Store cookies in memory
 
 MEDIA_EXTS = {".mp4", ".mkv", ".webm", ".avi", ".mov", ".mp3", ".wav", ".flac", ".m4a", ".opus", ".ogg"}
 
@@ -132,7 +133,20 @@ COOKIE_FILE = os.path.join(os.path.dirname(__file__), "cookies.txt")
 
 
 def get_ydl_opts(mode, quality, audio_format, is_playlist=False):
-    log(f"Cookie file exists: {os.path.exists(COOKIE_FILE)}, path: {COOKIE_FILE}")
+    global cookies_content
+
+    # Check both file and memory
+    has_cookies = os.path.exists(COOKIE_FILE) or cookies_content
+    log(f"Cookies available: {has_cookies}")
+
+    # If we have cookies in memory but not on disk, write to disk
+    if cookies_content and not os.path.exists(COOKIE_FILE):
+        try:
+            with open(COOKIE_FILE, 'w') as f:
+                f.write(cookies_content)
+            log("Wrote cookies from memory to file")
+        except Exception as e:
+            log(f"Failed to write cookies: {e}", "error")
 
     opts = {
         "progress_hooks": [],
@@ -353,19 +367,30 @@ def get_settings():
 
 @app.route("/api/cookies", methods=["POST"])
 def upload_cookies():
-    if 'file' not in request.files:
-        return jsonify({"error": "No file uploaded"}), 400
+    global cookies_content
 
-    file = request.files['file']
-    if file.filename == '':
-        return jsonify({"error": "No file selected"}), 400
+    # Handle file upload
+    if 'file' in request.files:
+        file = request.files['file']
+        if file and file.filename.endswith('.txt'):
+            content = file.read().decode('utf-8', errors='ignore')
+            cookies_content = content
+            with open(COOKIE_FILE, 'w') as f:
+                f.write(content)
+            log("Cookies uploaded successfully", "success")
+            return jsonify({"ok": True, "message": "Cookies installed"})
+        return jsonify({"error": "Please upload a .txt file"}), 400
 
-    if file and file.filename.endswith('.txt'):
-        file.save(COOKIE_FILE)
-        log("Cookies file uploaded successfully", "success")
+    # Handle text paste
+    data = request.json
+    if data and 'cookies' in data:
+        cookies_content = data['cookies']
+        with open(COOKIE_FILE, 'w') as f:
+            f.write(cookies_content)
+        log("Cookies pasted successfully", "success")
         return jsonify({"ok": True, "message": "Cookies installed"})
 
-    return jsonify({"error": "Please upload a .txt file"}), 400
+    return jsonify({"error": "No cookies provided"}), 400
 
 
 @app.route("/api/fetch", methods=["POST"])
