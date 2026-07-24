@@ -132,6 +132,15 @@ def save_history(entry):
 COOKIE_FILE = os.path.join(os.path.dirname(__file__), "cookies.txt")
 
 
+def _make_ydl(opts):
+    """Create YoutubeDL instance with Node.js runtime, falling back if unsupported."""
+    import yt_dlp
+    try:
+        return yt_dlp.YoutubeDL({**opts, "js_runtimes": {"node": {}}})
+    except (ValueError, TypeError):
+        return yt_dlp.YoutubeDL(opts)
+
+
 def get_ydl_opts(mode, quality, audio_format, is_playlist=False):
     global cookies_content
 
@@ -163,11 +172,6 @@ def get_ydl_opts(mode, quality, audio_format, is_playlist=False):
             "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
             "Origin": "https://www.youtube.com",
             "Referer": "https://www.youtube.com/",
-        },
-        "extractor_args": {
-            "youtube": {
-                "player_client": ["web"],
-            }
         },
     }
 
@@ -244,7 +248,7 @@ def download_worker(urls, mode, quality, audio_format, is_playlist, download_id)
         log(f"[{current_num}/{total}] Downloading: {url}")
 
         try:
-            with yt_dlp.YoutubeDL(opts) as ydl:
+            with _make_ydl(opts) as ydl:
                 info = ydl.extract_info(url, download=True)
                 title = info.get("title", "Unknown")
                 titles.append(title)
@@ -410,7 +414,7 @@ def fetch_playlist():
     }
 
     try:
-        with yt_dlp.YoutubeDL(opts) as ydl:
+        with _make_ydl(opts) as ydl:
             info = ydl.extract_info(url, download=False)
 
         if not info:
@@ -578,6 +582,21 @@ def delete_history_item(index):
 
 
 if __name__ == "__main__":
+    import webbrowser
+    import socket
+
+    def get_local_ip():
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect(("8.8.8.8", 80))
+            ip = s.getsockname()[0]
+            s.close()
+            return ip
+        except:
+            return "127.0.0.1"
+
+    local_ip = get_local_ip()
+
     print()
     print("  ================================================")
     print("   PVLM YouTube Downloader")
@@ -587,7 +606,12 @@ if __name__ == "__main__":
     print(f"   Music: {MUSIC_DIR}")
     print()
     print("   Local:   http://localhost:5000")
-    print("   Network: http://192.168.254.102:5000")
+    print(f"   Network: http://{local_ip}:5000")
     print("  ================================================")
     print()
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    print("   Opening browser...")
+
+    # Auto-open browser after short delay
+    threading.Timer(1.5, lambda: webbrowser.open("http://localhost:5000")).start()
+
+    app.run(debug=False, host='0.0.0.0', port=5000)
